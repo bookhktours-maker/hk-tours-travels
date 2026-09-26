@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HK Tours — Enquiries Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --indigo:#16233A; --rust:#A85526; --marigold:#D9A441;
+    --parchment:#F2E9D8; --ink:#241D14; --line:rgba(36,29,20,0.12);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'Work Sans',sans-serif; background:var(--parchment); color:var(--ink);}
+  h1{font-family:'Fraunces',serif; font-weight:700;}
+  .wrap{max-width:1100px; margin:0 auto; padding:32px 20px;}
+
+  /* Login screen */
+  #loginScreen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:var(--indigo); color:#fff;
+  }
+  .login-box{background:#fff; color:var(--ink); padding:40px; border-radius:6px; width:100%; max-width:340px;}
+  .login-box h1{font-size:1.4rem; margin-bottom:6px; color:var(--indigo);}
+  .login-box p{font-size:0.9rem; opacity:0.7; margin-bottom:20px;}
+  .login-box input{width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:4px; font-size:1rem; margin-bottom:12px;}
+  .login-box button{width:100%; padding:12px; background:var(--rust); color:#fff; border:none; border-radius:4px; font-size:1rem; cursor:pointer; font-weight:600;}
+  #loginError{color:#B3261E; font-size:0.85rem; margin-top:10px; display:none;}
+
+  /* Dashboard */
+  #dashboard{display:none;}
+  header{background:var(--indigo); color:#fff; padding:20px 0;}
+  header .wrap{display:flex; justify-content:space-between; align-items:center; padding:0 20px;}
+  header h1{font-size:1.3rem; color:#fff;}
+  header button{background:transparent; border:1px solid rgba(255,255,255,0.35); color:#fff; padding:8px 16px; border-radius:4px; cursor:pointer; font-size:0.85rem;}
+
+  .toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;}
+  .toolbar input{padding:10px 14px; border:1px solid var(--line); border-radius:4px; font-size:0.9rem; min-width:220px;}
+  .toolbar .refresh{background:var(--marigold); color:var(--indigo); border:none; padding:10px 18px; border-radius:4px; font-weight:600; cursor:pointer;}
+  #status{font-size:0.85rem; opacity:0.65; margin-bottom:14px;}
+
+  .table-wrap{overflow-x:auto; background:#fff; border:1px solid var(--line); border-radius:6px;}
+  table{border-collapse:collapse; width:100%; font-size:0.9rem; min-width:900px;}
+  th, td{padding:12px 14px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap;}
+  th{background:var(--indigo); color:#fff; position:sticky; top:0;}
+  tr:last-child td{border-bottom:none;}
+  td.msg{white-space:normal; min-width:200px;}
+  a.contact-link{color:var(--rust); text-decoration:none; font-weight:600;}
+  .actions{display:flex; gap:6px; white-space:nowrap;}
+  .btn-action{display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border-radius:4px; font-size:0.82rem; font-weight:600; text-decoration:none; color:#fff;}
+  .btn-action.call{background:var(--rust);}
+  .btn-action.wa{background:#25D366;}
+  .empty{padding:40px; text-align:center; opacity:0.6;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>HK Tours — Admin</h1>
+    <p>Enter the password to view enquiries.</p>
+    <input type="password" id="passwordInput" placeholder="Password" onkeydown="if(event.key==='Enter') checkPassword()">
+    <button onclick="checkPassword()">Enter</button>
+    <p id="loginError">Wrong password. Try again.</p>
+  </div>
+</div>
+
+<div id="dashboard">
+  <header>
+    <div class="wrap">
+      <h1>HK Tours — Enquiries</h1>
+      <button onclick="logout()">Log out</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="toolbar">
+      <input type="text" id="searchBox" placeholder="Search by name, country, phone..." oninput="renderTable()">
+      <button class="refresh" onclick="loadData()">↻ Refresh</button>
+    </div>
+    <div id="status">Loading...</div>
+    <div class="table-wrap">
+      <table id="dataTable" style="display:none;">
+        <thead><tr id="tableHead"></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg" style="display:none;">No enquiries yet.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- Change this password to whatever you like ----
+  const ADMIN_PASSWORD = "hktours2026";
+
+  // Same Apps Script Web App URL used by index.html
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyn7i7yjIqT2GhJ5GVKzE5FjBulFtR5eMI9jm0qKIPFdXl1J6uJZtQJTMmiMFr2MEL0/exec";
+
+  let allRows = [];
+
+  function checkPassword() {
+    const val = document.getElementById('passwordInput').value;
+    if (val === ADMIN_PASSWORD) {
+      sessionStorage.setItem('hk_admin_ok', '1');
+      showDashboard();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem('hk_admin_ok');
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+  }
+
+  function showDashboard() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    loadData();
+  }
+
+  function loadData() {
+    document.getElementById('status').textContent = 'Loading...';
+    fetch(SCRIPT_URL)
+      .then(r => r.json())
+      .then(rows => {
+        if (!Array.isArray(rows) || rows.length < 1) {
+          allRows = [];
+          document.getElementById('status').textContent = 'No data found.';
+          renderTable();
+          return;
+        }
+        allRows = rows;
+        const count = rows.length - 1;
+        document.getElementById('status').textContent =
+          count + ' enquir' + (count === 1 ? 'y' : 'ies') + ' — last updated ' + new Date().toLocaleTimeString();
+        renderTable();
+      })
+      .catch(err => {
+        document.getElementById('status').textContent =
+          'Could not load data. Check your internet connection or try refreshing.';
+      });
+  }
+
+  function renderTable() {
+    const table = document.getElementById('dataTable');
+    const empty = document.getElementById('emptyMsg');
+    const head = document.getElementById('tableHead');
+    const body = document.getElementById('tableBody');
+    head.innerHTML = '';
+    body.innerHTML = '';
+
+    if (allRows.length < 2) {
+      table.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+
+    const headers = allRows[0];
+    let dataRows = allRows.slice(1).reverse(); // newest first
+
+    const search = document.getElementById('searchBox').value.toLowerCase();
+    if (search) {
+      dataRows = dataRows.filter(row => row.join(' ').toLowerCase().includes(search));
+    }
+
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      head.appendChild(th);
+    });
+    const actionsTh = document.createElement('th');
+    actionsTh.textContent = 'Actions';
+    head.appendChild(actionsTh);
+
+    if (dataRows.length === 0) {
+      table.style.display = 'none';
+      empty.style.display = 'block';
+      empty.textContent = 'No matching enquiries.';
+      return;
+    }
+
+    table.style.display = 'table';
+    empty.style.display = 'none';
+
+    dataRows.forEach(row => {
+      const tr = document.createElement('tr');
+      row.forEach((cell, i) => {
+        const td = document.createElement('td');
+        const headerName = (headers[i] || '').toLowerCase();
+        if (headerName === 'message') td.className = 'msg';
+        if (headerName === 'phone' && cell) {
+          const a = document.createElement('a');
+          a.href = 'tel:' + cell; a.className = 'contact-link'; a.textContent = cell;
+          td.appendChild(a);
+        } else if (headerName === 'whatsapp' && cell) {
+          const a = document.createElement('a');
+          a.href = 'https://wa.me/' + String(cell).replace(/\D/g, '');
+          a.className = 'contact-link'; a.target = '_blank'; a.textContent = cell;
+          td.appendChild(a);
+        } else {
+          td.textContent = cell;
+        }
+        tr.appendChild(td);
+      });
+
+      // Find phone/whatsapp values for this row using the header positions
+      const phoneIdx = headers.findIndex(h => (h || '').toLowerCase() === 'phone');
+      const waIdx = headers.findIndex(h => (h || '').toLowerCase() === 'whatsapp');
+      const phoneVal = phoneIdx > -1 ? row[phoneIdx] : '';
+      const waVal = waIdx > -1 ? row[waIdx] : '';
+
+      const actionsTd = document.createElement('td');
+      actionsTd.className = 'actions';
+      if (phoneVal) {
+        const callBtn = document.createElement('a');
+        callBtn.href = 'tel:' + String(phoneVal).replace(/\s/g, '');
+        callBtn.className = 'btn-action call';
+        callBtn.textContent = '📞 Call';
+        actionsTd.appendChild(callBtn);
+      }
+      if (waVal) {
+        const waBtn = document.createElement('a');
+        waBtn.href = 'https://wa.me/' + String(waVal).replace(/\D/g, '');
+        waBtn.className = 'btn-action wa';
+        waBtn.target = '_blank';
+        waBtn.textContent = '💬 WhatsApp';
+        actionsTd.appendChild(waBtn);
+      }
+      tr.appendChild(actionsTd);
+
+      body.appendChild(tr);
+    });
+  }
+
+  // Stay logged in for this browser tab session
+  if (sessionStorage.getItem('hk_admin_ok') === '1') {
+    showDashboard();
+  }
+</script>
+
+</body>
+</html>
