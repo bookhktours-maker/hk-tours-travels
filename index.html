@@ -135,6 +135,7 @@
   .packages-list{border-top:1px solid var(--line);}
   .package{border-bottom:1px solid var(--line);}
   .package summary{display:flex; justify-content:space-between; align-items:center; gap:16px; padding:22px 0; cursor:pointer; list-style:none;}
+  .package summary h3{min-width:0;}
   .package summary::-webkit-details-marker{display:none;}
   .package summary h3{font-size:1.1rem;}
   .package summary .arrow{color:var(--rust); font-size:1.3rem; transition:transform 0.25s ease; flex-shrink:0;}
@@ -164,8 +165,9 @@
 
   .enquire{background:#fff; border:1px solid var(--line); border-radius:4px; padding:40px; margin-top:8px;}
   .enquire-grid{display:grid; grid-template-columns:1fr 1fr; gap:40px;}
-  .contact-row{display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--line); font-size:0.98rem;}
-  .contact-row strong{min-width:90px; color:var(--rust);}
+  .contact-row{display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--line); font-size:0.98rem; flex-wrap:wrap;}
+  .contact-row strong{min-width:90px; color:var(--rust); flex-shrink:0;}
+  .contact-row span{min-width:0; word-break:break-word;}
   form{display:flex; flex-direction:column; gap:14px;}
   input, textarea, select{font-family:inherit; font-size:0.95rem; padding:12px 14px; border:1px solid var(--line); border-radius:3px; background:var(--parchment);}
   textarea{min-height:100px; resize:vertical;}
